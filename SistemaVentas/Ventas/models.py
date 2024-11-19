@@ -27,20 +27,35 @@ class Cliente(BaseModel):
      
 class Orden(BaseModel):
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE)
-    productos= models.ManyToManyField(Producto)
-    subtotal = models.DecimalField(max_digits=10, decimal_places=2,default=0) 
+    productos = models.ManyToManyField(Producto)
+    subtotal = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     iva = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    total = models.DecimalField(max_digits=10, decimal_places=2)
-    def calcular_totales(self):
-         self.subtotal = sum(producto.precio for producto in self.productos.all())
-         self.iva = self.subtotal * 0.15 # Polimorfismo aplicado aquí 
-         self.total = self.subtotal + self.iva 
-         self.save()
-     
-            
-    def __str__(self):
-        return f"Orden {self.id} - Cliente:{self.cliente.nombre} - Total: ${self.total}"
+    total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
+    def calcular_totales(self):
+        """
+        Calcula el subtotal, el IVA y el total basado en los productos asociados.
+        """
+        subtotal = sum(producto.precio for producto in self.productos.all())
+        iva = subtotal * Decimal('0.12')  # IVA 12%
+        total = subtotal + iva
+        return subtotal, iva, total
+
+    def save(self, *args, **kwargs):
+        """
+        Sobrescribe el método save para calcular y asignar los totales
+        únicamente si la orden ya existe en la base de datos.
+        """
+        if self.pk:  # Solo calcular si ya existe un ID
+            subtotal, iva, total = self.calcular_totales()
+            self.subtotal = subtotal
+            self.iva = iva
+            self.total = total
+
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Orden {self.id or 'Sin ID'} - Cliente: {self.cliente.nombre} - Total: ${self.total}"
 
 
 	 

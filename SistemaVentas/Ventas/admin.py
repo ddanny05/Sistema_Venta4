@@ -12,7 +12,7 @@ class ProductoAdmin(admin.ModelAdmin):
 
 @admin.register(Cliente)
 class ClienteAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'apellido', 'cedula', 'direccion')
+    list_display = ('nombre', 'apellido', 'cedula', 'direccion', 'fecha_creacion')
     search_fields = ('nombre', 'apellido', 'cedula')
 
 @admin.register(Orden)
@@ -21,7 +21,16 @@ class OrdenAdmin(admin.ModelAdmin):
     filter_horizontal = ('productos',)
     readonly_fields = ('subtotal', 'iva', 'total')
 
-    # Calcular totales automáticamente
     def save_model(self, request, obj, form, change):
-        obj.calcular_totales()
-        super().save_model(request, obj, form, change)
+        """
+        Calcula los totales antes de guardar la orden.
+        """
+        obj.save()
+
+    def save_related(self, request, form, formsets, change):
+        """
+        Calcula los totales después de relacionar los productos.
+        """
+        super().save_related(request, form, formsets, change)
+        form.instance.subtotal, form.instance.iva, form.instance.total = form.instance.calcular_totales()
+        form.instance.save(update_fields=['subtotal', 'iva', 'total'])
